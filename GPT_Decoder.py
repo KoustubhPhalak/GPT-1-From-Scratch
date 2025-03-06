@@ -27,26 +27,26 @@ class PositionalEncoding(nn.Module):
         positions = torch.arange(0, max_len).unsqueeze(0)
         self.register_buffer('positions', positions)
     
-    # def forward(self, x):
-    #     # Get positions
-    #     pos = self.pos_emb(self.positions)
-
-    #     # Add positional encoding to input
-    #     return x + pos
-    
-    def forward(self, x):
-        seq_len = x.size(0)
-        # Create positional embeddings
-        self.pos_emb = nn.Embedding(seq_len, self.d_model).to(device)
-
-        # Define positions
-        self.positions = torch.arange(0, seq_len).unsqueeze(0).to(device)
-
+    def forward(self, x): # For training
         # Get positions
         pos = self.pos_emb(self.positions)
 
         # Add positional encoding to input
         return x + pos
+    
+    # def forward(self, x): # For generating random text
+    #     seq_len = x.size(0)
+    #     # Create positional embeddings
+    #     self.pos_emb = nn.Embedding(seq_len, self.d_model).to(device)
+
+    #     # Define positions
+    #     self.positions = torch.arange(0, seq_len).unsqueeze(0).to(device)
+
+    #     # Get positions
+    #     pos = self.pos_emb(self.positions)
+
+    #     # Add positional encoding to input
+    #     return x + pos
 
 # Define single Attention Head
 class AttentionHead(nn.Module):
