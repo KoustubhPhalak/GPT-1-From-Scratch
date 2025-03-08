@@ -205,12 +205,29 @@ def test_question_answering(model, tokenizer, example, max_tokens=50):
     question = example['question']
     options = ' '.join([f"({chr(65+i)}) {opt}" for i, opt in enumerate(example['options'])])
     
-    # Create input text without answer
-    input_text = f"{article} [SEP] {question} [SEP] {options} [SEP]"
+    # First tokenize question and options to know their length
+    question_options = f" [SEP] {question} [SEP] {options} [SEP]"
+    question_options_tokens = tokenizer.encode(question_options).ids
     
-    # Tokenize input
+    # Calculate how much space we have for the article
+    # Subtract 2 for [BOS] and potential [EOS], length of question_options, and space for generation
+    max_article_tokens = max_len - 2 - len(question_options_tokens) - max_tokens
+    
+    # Ensure we have at least some space for the article
+    if max_article_tokens < 0:
+        # If no space for article, we need to truncate question_options
+        max_article_tokens = 0
+        question_options_tokens = question_options_tokens[:(max_len - max_tokens - 2)]
+    
+    # Tokenize article and truncate if needed
+    article_tokens = tokenizer.encode(article).ids
+    if len(article_tokens) > max_article_tokens:
+        # Take the last max_article_tokens tokens as they might be more relevant
+        article_tokens = article_tokens[-max_article_tokens:]
+    
+    # Create input text without answer
     bos_id = tokenizer.token_to_id('[BOS]')
-    input_ids = [bos_id] + tokenizer.encode(input_text).ids
+    input_ids = [bos_id] + article_tokens + question_options_tokens
     input_tensor = torch.LongTensor(input_ids).unsqueeze(0).to(device)  # Add batch dimension
     
     # Generate answer
@@ -219,6 +236,10 @@ def test_question_answering(model, tokenizer, example, max_tokens=50):
         current_input = input_tensor
         
         for _ in range(max_tokens):
+            # If sequence gets too long, slide the window
+            if current_input.size(1) >= max_len:
+                current_input = current_input[:, -max_len+1:]
+            
             # Create attention mask
             attn_mask = torch.zeros((1, current_input.size(1)), dtype=torch.bool).to(device)
             
@@ -238,7 +259,9 @@ def test_question_answering(model, tokenizer, example, max_tokens=50):
     generated_text = tokenizer.decode(generated)
     correct_answer = f"({example['answer']}) {example['options'][ord(example['answer']) - ord('A')]}"
     
-    print(f"\nArticle: {article[:200]}...")
+    # For display, show if article was truncated
+    article_display = "..." + article[-200:] if len(article_tokens) > max_article_tokens else article[:200]
+    print(f"\nArticle: {article_display}...")
     print(f"\nQuestion: {question}")
     print(f"\nOptions: {options}")
     print(f"\nModel's Answer: {generated_text}")
