@@ -25,7 +25,7 @@ Batch size <code>**(batch_size)**</code> = 64
 
 3. Run last cell in <code>test.ipynb</code> to generate random text from pre-trained GPT-1
 
-**Sample generation output:** <em>The Speciment , released in The History , Sexquour and St. Brey 's , and St. Popen , also being published in or Slimpome of the type rein American SM edition retorines ; @-@ Sand chinGB The Book .</em>
+**Sample generation output:** <em>The earliest known mention of this date was that of 544 , when King Olaf II of Norway was discovered in the reign of King Olaf II of Norway . The earliest recorded mention of this date was from 544 , when King Olaf was assassinated . The date of the birth is unknown , but it is unclear whether Olaf was killed . Olaf 's birth date is unknown , but it is likely that Olaf was killed by the Vikings in 842 , but Olaf 's reign is uncertain . .</em>
 
 This can be improved by increasing model size, but is good enough for 56M parameter model.
 

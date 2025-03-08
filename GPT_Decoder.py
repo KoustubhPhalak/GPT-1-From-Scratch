@@ -27,26 +27,14 @@ class PositionalEncoding(nn.Module):
         positions = torch.arange(0, max_len).unsqueeze(0)
         self.register_buffer('positions', positions)
     
-    def forward(self, x): # For training
-        # Get positions
-        pos = self.pos_emb(self.positions)
-
+    def forward(self, x):
+        B, T, C = x.shape
+        # Get positions for the actual sequence length
+        pos = self.pos_emb(self.positions[:, :T])
+        # Expand positions to match batch size
+        pos = pos.expand(B, -1, -1)
         # Add positional encoding to input
         return x + pos
-    
-    # def forward(self, x): # For generating random text
-    #     seq_len = x.size(0)
-    #     # Create positional embeddings
-    #     self.pos_emb = nn.Embedding(seq_len, self.d_model).to(device)
-
-    #     # Define positions
-    #     self.positions = torch.arange(0, seq_len).unsqueeze(0).to(device)
-
-    #     # Get positions
-    #     pos = self.pos_emb(self.positions)
-
-    #     # Add positional encoding to input
-    #     return x + pos
 
 # Define single Attention Head
 class AttentionHead(nn.Module):
@@ -151,14 +139,30 @@ class GPT_1(nn.Module):
         x = self.fc(x)
         return x
     
-    def generate(self, max_len=512):
+    def generate(self, max_len=128, batch_size=64):
         '''Generate text'''
-        decoder_input = torch.ones((1,), dtype=torch.long, device=device) * 5 # [BOS] token
+        decoder_input = torch.ones((batch_size,1), dtype=torch.long, device=device) * 5 # [BOS] token
+
+        finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
+
         for _ in range(max_len):
-            output = self(decoder_input)
-            token = torch.argmax(output[:, -1], dim=-1)
-            decoder_input = torch.cat([decoder_input, token], dim=-1)
-            if token == 6: # [EOS] token
+            logits = self(decoder_input)
+
+            # Get the last predicted token
+            logits = logits[:, -1, :].squeeze(1)
+            next_token = torch.argmax(logits, dim=-1).unsqueeze(1)
+
+            # Force finished sequences to keep producing [EOS]
+            next_token = torch.where(finished.unsqueeze(-1), torch.tensor(6, device=device), next_token)
+
+            # Append to decoder input
+            decoder_input = torch.cat([decoder_input, next_token], dim=1)
+
+            # Update finished status
+            finished = finished | (next_token.squeeze(-1) == 6)
+
+            # If all sequences are finished, break
+            if finished.all():
                 break
         
         return decoder_input
